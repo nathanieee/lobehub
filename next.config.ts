@@ -1,12 +1,18 @@
 import { defineConfig } from './src/libs/next/config/define-config';
 
 const isVercel = !!process.env.VERCEL_ENV;
+const skipTypeCheck = process.env.SKIP_TYPE_CHECK === 'true';
 
 const nextConfig = defineConfig({
+  typescript: {
+    ignoreBuildErrors: skipTypeCheck,
+  },
+
   experimental: {
     webpackBuildWorker: true,
     webpackMemoryOptimizations: true,
   },
+
   // Vercel serverless optimization: exclude musl binaries
   // Vercel uses Amazon Linux (glibc), not Alpine Linux (musl)
   // This saves ~45MB (29MB canvas-musl + 16MB sharp-musl)
@@ -18,8 +24,10 @@ const nextConfig = defineConfig({
         ],
       }
     : undefined,
+
   webpack: (webpackConfig, context) => {
     const { dev } = context;
+
     if (!dev) {
       webpackConfig.cache = false;
     }
