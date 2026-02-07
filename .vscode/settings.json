@@ -96,5 +96,10 @@
     "**/src/server/routers/edge/*.ts": "${filename} • edge",
     "**/src/locales/default/*.ts": "${filename} • locale",
     "**/index.*": "${dirname}/${filename}.${extname}"
+  },
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#482408",
+    "titleBar.activeBackground": "#64330B",
+    "titleBar.activeForeground": "#FEF9F5"
   }
 }
