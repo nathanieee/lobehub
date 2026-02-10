@@ -1,12 +1,448 @@
 # Coolify Deployment Guide for LobeHub
 
-This guide provides specific instructions for deploying LobeHub using Coolify.
+This guide provides comprehensive instructions for deploying LobeHub using Coolify.
 
-## Prerequisites
+## Quick Start - Choose Your Deployment Method
 
-- Coolify instance running (v4.0+ recommended)
-- At least 4GB RAM available for builds
-- 30+ minutes for initial build time
+LobeHub supports **three deployment methods** in Coolify. Choose based on your infrastructure:
+
+| Method | Services | RAM | Use Case | Difficulty |
+|--------|----------|-----|----------|------------|
+| **Docker Compose** ⭐ | All (App + DB + Redis + S3) | 4GB+ | Full self-hosted deployment | Medium |
+| **Dockerfile** | App only | 2GB+ | With external services | Easy |
+| **Nixpacks** | App only | 2GB+ | Quick deployment | Easy |
+
+**Recommendation**: Use **Docker Compose** for complete self-hosted deployment with all services included.
+
+---
+
+## Method 1: Docker Compose (Recommended) ⭐
+
+Deploys: **LobeHub + PostgreSQL + Redis + RustFS (S3) + Searxng**
+
+### Prerequisites
+
+- Coolify instance (v4.0+)
+- **4GB+ RAM** available
+- **2+ CPU cores** recommended
+- 30-60 minutes for initial build
+
+### Step-by-Step Deployment
+
+#### 1. Create New Application in Coolify
+
+1. Go to Coolify Dashboard
+2. Click **"New Resource"** → **"Application"**
+3. Select your Git repository
+4. Choose the branch to deploy
+
+#### 2. Configure Build Pack
+
+**Critical Settings:**
+
+```
+Build Pack: Docker Compose
+Compose Path: docker-compose/deploy/docker-compose.yml
+Base Directory: / (root)
+```
+
+⚠️ **Important**: Do NOT select "Dockerfile" or "Nixpacks" - choose **"Docker Compose"**
+
+#### 3. Configure Environment Variables
+
+Copy these from `docker-compose/deploy/.env.example`:
+
+**Required Variables:**
+
+```bash
+# Security (generate with: openssl rand -base64 32)
+KEY_VAULTS_SECRET=your_key_vaults_secret_here
+AUTH_SECRET=your_auth_secret_here
+
+# Database
+POSTGRES_PASSWORD=your_secure_password_here
+LOBE_DB_NAME=lobechat
+
+# S3/RustFS
+RUSTFS_ACCESS_KEY=admin
+RUSTFS_SECRET_KEY=your_rustfs_password
+RUSTFS_LOBE_BUCKET=lobe
+
+# Application
+APP_URL=https://your-domain.com
+PORT=3210
+```
+
+**Optional Variables:**
+
+```bash
+# AI Provider Keys
+OPENAI_API_KEY=sk-xxxxx
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+
+# Email (for verification)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-email@example.com
+SMTP_PASS=your-password
+```
+
+#### 4. Network Configuration
+
+```
+Port: 3210
+Health Check: /api/health
+Check Interval: 30s
+Timeout: 10s
+Retries: 3
+```
+
+#### 5. Deploy
+
+1. Click **"Deploy"**
+2. Wait for all services to start (3-5 minutes)
+3. Monitor logs: **Logs → Deployment Logs**
+4. Verify health checks pass
+
+#### 6. Access Your Application
+
+```
+URL: http://your-server-ip:3210
+Or configure domain in Coolify Settings
+```
+
+### What Gets Deployed
+
+The Docker Compose deployment includes:
+
+- **lobe**: LobeHub application (Port 3210)
+- **postgresql**: ParadeDB database (Port 5432)
+- **redis**: Redis cache (Port 6379)
+- **rustfs**: S3-compatible storage (Port 9000)
+- **searxng**: Search engine (internal)
+- **network-service**: Networking container
+
+### Resource Usage
+
+Automatic limits configured:
+```
+Application: 4GB RAM, 2 CPU
+PostgreSQL: 2GB RAM, 1 CPU
+Redis: 512MB RAM, 0.5 CPU
+RustFS: 1GB RAM, 1 CPU
+Total: ~7.5GB RAM, 4.5 CPU
+```
+
+### Troubleshooting Docker Compose
+
+#### Error: "Service failed to build"
+
+**Solution**: Check build logs for specific errors
+- Ensure sufficient RAM (4GB+ available)
+- Check internet connectivity for dependencies
+- Try "Force rebuild without cache"
+
+#### Error: "Database connection failed"
+
+**Solution**:
+1. Wait for PostgreSQL health check (check logs)
+2. Verify `DATABASE_URL` environment variable
+3. Ensure postgresql container is running: `docker ps | grep postgres`
+
+#### Error: "S3/RustFS connection failed"
+
+**Solution**:
+1. Check RustFS is healthy: `docker logs lobe-rustfs`
+2. Verify S3 credentials in environment variables
+3. Ensure `RUSTFS_LOBE_BUCKET` exists
+
+#### Application not starting
+
+**Check**:
+1. All containers running: `docker ps`
+2. Database migrations completed
+3. Required secrets set: `AUTH_SECRET`, `KEY_VAULTS_SECRET`
+4. Port 3210 not in use
+
+---
+
+## Method 2: Dockerfile (App Only)
+
+Deploys: **LobeHub application only**
+
+### Prerequisites
+
+- Coolify instance (v4.0+)
+- **2GB+ RAM** available
+- **External PostgreSQL** database
+- **External Redis** (optional but recommended)
+- **External S3** or object storage
+
+### Step-by-Step Deployment
+
+#### 1. Configure Build Pack
+
+```
+Build Pack: Dockerfile
+Dockerfile Path: Dockerfile
+Build Context: . (root)
+```
+
+#### 2. Build Arguments
+
+```bash
+NODEJS_VERSION=22
+BUILDKIT_INLINE_CACHE=1
+```
+
+#### 3. Environment Variables
+
+**Required:**
+
+```bash
+# Database
+DATABASE_URL=postgresql://user:password@external-host:5432/dbname
+DATABASE_DRIVER=node
+
+# Security
+AUTH_SECRET=your_auth_secret
+KEY_VAULTS_SECRET=your_key_vaults_secret
+
+# Application
+APP_URL=https://your-domain.com
+PORT=3210
+```
+
+**Optional (Redis):**
+
+```bash
+REDIS_URL=redis://external-host:6379
+REDIS_PREFIX=lobechat
+```
+
+**Optional (S3):**
+
+```bash
+S3_ENDPOINT=https://your-s3-compatible-storage
+S3_BUCKET=your-bucket-name
+S3_ACCESS_KEY_ID=your-access-key
+S3_SECRET_ACCESS_KEY=your-secret-key
+S3_ENABLE_PATH_STYLE=1
+```
+
+#### 4. Deploy
+
+1. Click **"Deploy"**
+2. Wait for build (10-20 minutes)
+3. Monitor logs
+
+### Troubleshooting Dockerfile
+
+#### Build timeout
+
+**Solution**:
+- Increase timeout to 45m
+- Enable "Force rebuild without cache"
+- Check server resources
+
+#### Module not found errors
+
+**Solution**:
+- Verify all environment variables set
+- Check `DATABASE_URL` is correct
+- Ensure external services accessible
+
+---
+
+## Method 3: Nixpacks (App Only)
+
+Deploys: **LobeHub application only**
+
+### When to Use
+
+- Quick deployments without external services
+- Testing and development
+- When you don't need full stack
+
+### Step-by-Step Deployment
+
+#### 1. Configure Build Pack
+
+```
+Build Pack: Nixpacks
+Base Directory: /
+```
+
+#### 2. Environment Variables
+
+Same as Dockerfile method above.
+
+#### 3. Deploy
+
+1. Click **"Deploy"**
+2. Wait for build (15-25 minutes)
+
+### Limitations
+
+⚠️ **Nixpacks cannot deploy additional services** - only the application container.
+
+---
+
+## Common Issues & Solutions
+
+### Issue: Build fails with "exit code 1"
+
+**Cause**: Resource constraints or dependency issues
+
+**Solutions**:
+1. Check available RAM (need 4GB+ for Docker Compose)
+2. Enable "Force rebuild without cache"
+3. Verify build arguments set correctly
+4. Check logs for specific error messages
+
+### Issue: Application not accessible
+
+**Check**:
+1. Port 3210 not blocked by firewall
+2. Domain DNS configured correctly
+3. Health checks passing in Coolify
+4. All containers running
+
+### Issue: Database migration errors
+
+**Solution**:
+1. Ensure `DATABASE_URL` is correct
+2. Check PostgreSQL is accessible
+3. Verify database user has permissions
+4. Check logs: `Logs → Application Logs`
+
+### Issue: High memory usage
+
+**For Docker Compose**:
+- Expected: ~7GB total
+- Reduce PostgreSQL memory in docker-compose.yml
+- Disable RustFS if using external S3
+
+**For Dockerfile/Nixpacks**:
+- Expected: ~2GB
+- Check for memory leaks in logs
+- Restart application
+
+---
+
+## Performance Optimization
+
+### Build Caching
+
+Enable for faster rebuilds:
+
+```bash
+# Build Arguments
+BUILDKIT_INLINE_CACHE=1
+
+# Environment
+DOCKER_BUILDKIT=1
+COMPOSE_DOCKER_CLI_BUILD=1
+```
+
+### Database Optimization
+
+For production:
+- Use managed PostgreSQL (AWS RDS, etc.)
+- Enable connection pooling
+- Regular backups
+
+### Redis Caching
+
+Configure for better performance:
+
+```bash
+REDIS_URL=redis://external-host:6379
+REDIS_PREFIX=lobechat
+REDIS_TLS=0
+```
+
+---
+
+## Migration from Other Platforms
+
+### From Vercel
+
+1. Export environment variables
+2. Import into Coolify
+3. Update `APP_URL`
+4. Migrate database
+5. Update DNS
+
+### From Local Development
+
+1. Export `.env` variables
+2. Configure in Coolify
+3. Update `DATABASE_URL` to production
+4. Deploy and verify
+
+---
+
+## Security Best Practices
+
+1. **Generate strong secrets**:
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. **Use HTTPS**:
+   - Configure SSL certificate in Coolify
+   - Update `APP_URL` to https://
+
+3. **Restrict database access**:
+   - Don't expose PostgreSQL ports publicly
+   - Use strong passwords
+   - Regular backups
+
+4. **Monitor logs**:
+   - Check Coolify logs regularly
+   - Set up alerts for errors
+
+---
+
+## Support & Resources
+
+- **Coolify Docs**: https://coolify.io/docs
+- **LobeHub Docs**: https://lobehub.com/docs
+- **Issue Tracker**: https://github.com/lobehub/lobe-chat/issues
+
+---
+
+## Quick Reference
+
+### Docker Compose (Recommended)
+
+| Setting | Value |
+|---------|-------|
+| Build Pack | Docker Compose |
+| Compose Path | `docker-compose/deploy/docker-compose.yml` |
+| Port | 3210 |
+| RAM | 4GB+ |
+| Build Time | 30-60 min |
+
+### Dockerfile
+
+| Setting | Value |
+|---------|-------|
+| Build Pack | Dockerfile |
+| Build Args | `NODEJS_VERSION=22` |
+| Port | 3210 |
+| RAM | 2GB+ |
+| Build Time | 10-20 min |
+
+### Nixpacks
+
+| Setting | Value |
+|---------|-------|
+| Build Pack | Nixpacks |
+| Port | 3210 |
+| RAM | 2GB+ |
+| Build Time | 15-25 min |
 
 ## Deployment Configuration
 

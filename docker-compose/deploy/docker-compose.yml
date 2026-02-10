@@ -27,6 +27,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
     restart: always
     networks:
       - lobe-network
@@ -44,6 +52,14 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     restart: always
     networks:
       - lobe-network
@@ -102,7 +118,19 @@ services:
       - .env
 
   lobe:
-    image: lobehub/lobehub
+    build:
+      context: ../..
+      dockerfile: docker-compose/deploy/Dockerfile
+      args:
+        NODEJS_VERSION: "22"
+        NODE_ENV: "production"
+        CI: "true"
+        NEXT_TELEMETRY_DISABLED: "1"
+        SKIP_TYPE_CHECK: "false"
+      cache_from:
+        - lobehub:latest
+      target: production
+    image: lobehub:local-build
     container_name: lobehub
     network_mode: 'service:network-service'
     depends_on:
@@ -131,8 +159,24 @@ services:
       - 'REDIS_URL=redis://redis:6379'
       - 'REDIS_PREFIX=lobechat'
       - 'REDIS_TLS=0'
+      - 'NODE_ENV=production'
+      - 'PORT=3210'
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3210/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     restart: always
 
 volumes:
