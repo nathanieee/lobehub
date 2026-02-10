@@ -1,5 +1,5 @@
 ## Set global build ENV
-ARG NODEJS_VERSION="24"
+ARG NODEJS_VERSION="22"
 
 ## Base image for all building stages
 FROM node:${NODEJS_VERSION}-slim AS base
@@ -30,6 +30,7 @@ RUN set -e && \
 FROM base AS builder
 
 ARG USE_CN_MIRROR
+ARG BUILDKIT_INLINE_CACHE=1
 ARG NEXT_PUBLIC_BASE_PATH
 ARG NEXT_PUBLIC_SENTRY_DSN
 ARG NEXT_PUBLIC_ANALYTICS_POSTHOG
@@ -65,7 +66,8 @@ ENV NEXT_PUBLIC_ANALYTICS_UMAMI="${NEXT_PUBLIC_ANALYTICS_UMAMI}" \
     NEXT_PUBLIC_UMAMI_WEBSITE_ID="${NEXT_PUBLIC_UMAMI_WEBSITE_ID}"
 
 # Node
-ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV NODE_OPTIONS="--max-old-space-size=8192" \
+    NODE_ENV="production"
 
 WORKDIR /app
 
@@ -95,6 +97,11 @@ RUN set -e && \
 COPY . .
 
 # run build standalone for docker version
+# Set environment to optimize for CI/CD environments
+ENV CI=true \
+    NODE_OPTIONS="--max-old-space-size=8192" \
+    NEXT_TELEMETRY_DISABLED=1
+
 RUN npm run build:docker
 
 # Prepare desktop export assets for Electron packaging (if generated)

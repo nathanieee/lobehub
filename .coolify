@@ -1,0 +1,52 @@
+# Coolify Configuration for LobeHub
+# This file provides build hints and optimizations for Coolify deployments
+
+[build]
+# Explicitly use Dockerfile instead of Nixpacks
+type = "dockerfile"
+
+# Build context and Dockerfile location
+context = "."
+dockerfile = "Dockerfile"
+
+# Build optimizations for resource-constrained environments
+[build.build_args]
+# Use Node.js 22 for consistency with .nvmrc and nixpacks.toml
+NODEJS_VERSION = "22"
+
+# Enable build cache for faster rebuilds
+BUILDKIT_INLINE_CACHE = "1"
+
+[build.environment]
+# Disable telemetry during build
+NEXT_TELEMETRY_DISABLED = "1"
+# Set CI environment for optimized builds
+CI = "true"
+
+# Port configuration for Coolify
+[deploy]
+# Expose the default port
+port = 3210
+
+# Health check configuration
+[deploy.healthcheck]
+# HTTP endpoint for health checks
+path = "/api/health"
+# Interval between health checks
+interval = "30s"
+# Timeout for each health check
+timeout = "10s"
+# Number of failures before considering unhealthy
+retries = 3
+
+# Resource limits to prevent build failures
+[resources]
+limits.memory = "4Gi"
+limits.cpu = "2"
+requests.memory = "2Gi"
+requests.cpu = "1"
+
+# Build timeout to prevent hanging builds
+[build.timeout]
+# 30 minutes should be sufficient for this project
+duration = "30m"
