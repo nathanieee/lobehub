@@ -50,11 +50,17 @@ Base Directory: / (root)
 
 #### 3. Configure Environment Variables
 
-Copy these from `docker-compose/deploy/.env.example`:
+**⚠️ CRITICAL: Use `docker-compose/deploy/.env.coolify` as reference**
+
+Copy these from `docker-compose/deploy/.env.coolify`:
 
 **Required Variables:**
 
 ```bash
+# Port Configuration (REQUIRED - prevents build errors)
+RUSTFS_PORT=9000
+LOBE_PORT=3210
+
 # Security (generate with: openssl rand -base64 32)
 KEY_VAULTS_SECRET=your_key_vaults_secret_here
 AUTH_SECRET=your_auth_secret_here
@@ -70,8 +76,12 @@ RUSTFS_LOBE_BUCKET=lobe
 
 # Application
 APP_URL=https://your-domain.com
-PORT=3210
 ```
+
+**💡 Important Notes:**
+- `RUSTFS_PORT` and `LOBE_PORT` are **REQUIRED** to prevent build errors
+- Generate secrets with: `openssl rand -base64 32`
+- Use strong, unique passwords
 
 **Optional Variables:**
 

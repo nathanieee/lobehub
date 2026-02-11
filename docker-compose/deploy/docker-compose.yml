@@ -5,9 +5,9 @@ services:
     container_name: lobe-network
     restart: always
     ports:
-      - '${RUSTFS_PORT}:9000' # RustFS API
+      - '${RUSTFS_PORT:-9000}:9000' # RustFS API (default: 9000)
       - '9001:9001' # RustFS Console
-      - '${LOBE_PORT}:3210' # LobeChat
+      - '${LOBE_PORT:-3210}:3210' # LobeChat (default: 3210)
     command: tail -f /dev/null
     networks:
       - lobe-network
@@ -119,7 +119,7 @@ services:
 
   lobe:
     build:
-      context: ../..
+      context: .
       dockerfile: docker-compose/deploy/Dockerfile
       args:
         NODEJS_VERSION: "22"

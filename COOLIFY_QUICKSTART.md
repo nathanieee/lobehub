@@ -37,12 +37,18 @@ Base Directory: /
 
 ### 4. Add Environment Variables
 
-**Copy from:** `docker-compose/deploy/.env.example`
+**⚠️ CRITICAL: Add ALL of these variables in Coolify**
+
+**Copy from:** `docker-compose/deploy/.env.coolify`
 
 **Required (minimum):**
 
 ```bash
-# Generate these with: openssl rand -base64 32
+# Port Configuration (REQUIRED - prevents build errors)
+RUSTFS_PORT=9000
+LOBE_PORT=3210
+
+# Security (generate with: openssl rand -base64 32)
 KEY_VAULTS_SECRET=YOUR_KEY_VAULTS_SECRET_HERE
 AUTH_SECRET=YOUR_AUTH_SECRET_HERE
 
@@ -57,8 +63,9 @@ RUSTFS_LOBE_BUCKET=lobe
 
 # Application
 APP_URL=http://localhost:3210
-PORT=3210
 ```
+
+**💡 TIP**: The file `docker-compose/deploy/.env.coolify` has all these ready to copy!
 
 **Optional (for AI features):**
 
@@ -135,12 +142,24 @@ You should see the LobeHub interface.
 
 ## 🛠️ Troubleshooting
 
+### Build Fails with "variable is not set"
+
+**Error**: `The "RUSTFS_PORT" variable is not set` or `The "LOBE_PORT" variable is not set`
+
+**Solution**: Add these to Coolify environment variables:
+```bash
+RUSTFS_PORT=9000
+LOBE_PORT=3210
+```
+
+These are REQUIRED for the docker-compose to work!
+
 ### Build Fails
 
 **Check:**
 - [ ] Selected "Docker Compose" (not Dockerfile/Nixpacks)
 - [ ] Sufficient RAM (4GB+ available)
-- [ ] All required env vars set
+- [ ] All required env vars set (especially RUSTFS_PORT and LOBE_PORT)
 - [ ] Internet connection for dependencies
 
 **Solution**: Enable "Force rebuild without cache"
